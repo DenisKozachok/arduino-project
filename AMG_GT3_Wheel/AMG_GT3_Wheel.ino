@@ -1,33 +1,7 @@
-/*
-   This example turns the ESP32 into a Bluetooth LE gamepad that presses buttons and moves axis
-
-   At the moment we are using the default settings, but they can be canged using a BleGamepadConfig instance as parameter for the begin function.
-
-   Possible buttons are:
-   BUTTON_1 through to BUTTON_16
-   (16 buttons by default. Library can be configured to use up to 128)
-
-   Possible DPAD/HAT switch position values are:
-   DPAD_CENTERED, DPAD_UP, DPAD_UP_RIGHT, DPAD_RIGHT, DPAD_DOWN_RIGHT, DPAD_DOWN, DPAD_DOWN_LEFT, DPAD_LEFT, DPAD_UP_LEFT
-   (or HAT_CENTERED, HAT_UP etc)
-
-   bleGamepad.setAxes sets all axes at once. There are a few:
-   (x axis, y axis, z axis, rx axis, ry axis, rz axis, slider 1, slider 2)
-
-   Library can also be configured to support up to 5 simulation controls
-   (rudder, throttle, accelerator, brake, steering), but they are not enabled by default.
-
-   Library can also be configured to support different function buttons
-   (start, select, menu, home, back, volume increase, volume decrease, volume mute)
-   start and select are enabled by default
-*/
-
 #include <Arduino.h>
 #include <BleGamepad.h>
 
-#define ARRAY_LEN 3
-
-#define numOfButtons 10
+#define numOfButtons 3
 #define numOfHatSwitches 0
 #define enableX false
 #define enableY false
@@ -45,19 +19,25 @@
 
 BleGamepad bleGamepad("AMG GT3 Wheel", "lemmingDev", 25);
 
-int myPins[ARRAY_LEN] = {18, 19, 21};
-byte buttonPins[numOfButtons] = {0, 35, 17, 18, 19, 23, 25, 26, 27, 32};
-byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+byte previousButtonStates[numOfButtons];
+byte currentButtonStates[numOfButtons];
+byte buttonPins[numOfButtons] = {18, 19, 21};
+byte physicalButtons[numOfButtons] = {1, 2, 3};
+//byte buttonPins[numOfButtons] = {0, 35, 17, 18, 19, 23, 25, 26, 27, 32};
+//byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
   pinMode(2, OUTPUT);
-  for (int i = 0; i < ARRAY_LEN; i = i + 1) {
-    pinMode(myPins[i], INPUT_PULLUP);
+
+  for (byte currentPinIndex = 0; currentPinIndex < numOfButtons; currentPinIndex++)    {
+    pinMode(buttonPins[currentPinIndex], INPUT_PULLUP);
+    previousButtonStates[currentPinIndex] = HIGH;
+    currentButtonStates[currentPinIndex] = HIGH;
   }
+
 
   // Setup controller with 10 buttons, accelerator, brake and steering
   BleGamepadConfiguration bleGamepadConfig;
@@ -73,40 +53,34 @@ void setup()
 
 }
 
-void loop()
-{
-  if (bleGamepad.isConnected())
-  {
-    for (int i = 0; i < ARRAY_LEN; i++) {
-      boolean button = !digitalRead(myPins[i]);
-      if (button == 1) {
-        bleGamepad.press(myPins[i]);
-        digitalWrite(2, HIGH);   // turn the LED on (HIGH is the voltage level)
-        delay(25);                     // wait for a second
-        Serial.println("press button");
-      }else {
-        bleGamepad.release(myPins[i]);
-        digitalWrite(2, LOW);    // turn the LED off by making the voltage LOW
-        Serial.println("release button");
+void loop() {
+  if (bleGamepad.isConnected())  {
+    Serial.println("BLE connected");
+    for (byte currentIndex = 0; currentIndex < numOfButtons; currentIndex++) {
+      currentButtonStates[currentIndex] = digitalRead(buttonPins[currentIndex]);
+      Serial.print("buttonPins: "); Serial.print(buttonPins[currentIndex]);
+      Serial.print("    physicalButtons: "); Serial.print(physicalButtons[currentIndex]);
+      Serial.print("  Button status: "); Serial.println(currentButtonStates[currentIndex]);
+      if (currentButtonStates[currentIndex] != previousButtonStates[currentIndex]) {
+        Serial.print("currentButtonStates != previousButtonStates"); Serial.print(currentButtonStates[currentIndex]); Serial.println(previousButtonStates[currentIndex]);
+        if (currentButtonStates[currentIndex] == LOW) {
+          Serial.println("currentButtonStates[currentIndex] == LOW");
+          bleGamepad.press(physicalButtons[currentIndex]);
+        } else {
+          Serial.println("currentButtonStates[currentIndex] == HIGH");
+          bleGamepad.release(physicalButtons[currentIndex]);
+        }
       }
     }
-    delay(200);
-    //    Serial.println("Press buttons 5, 16,19");
-    //
-    //    bleGamepad.press(16);
-    //    bleGamepad.press(9);
-    //    delay(1000);
-    //
-    //    Serial.println("release buttons 5, 19");
-    //    bleGamepad.release(5);
-    //    bleGamepad.release(9);
-    //    bleGamepad.release(16);
-    //        bleGamepad.sendReport();
-
+    if (currentButtonStates != previousButtonStates) {
+      for (byte currentIndex = 0; currentIndex < numOfButtons; currentIndex++) {
+        previousButtonStates[currentIndex] = currentButtonStates[currentIndex];
+      }
+      bleGamepad.sendReport();
+    }
+    delay(20);
   } else {
     Serial.println("BLE is not connected");
     delay(100);
   }
-
-
 }
