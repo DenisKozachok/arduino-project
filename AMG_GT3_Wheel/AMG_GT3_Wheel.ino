@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <BleGamepad.h>
 
-#define numOfButtons 3
+#define numOfButtons 8 
 #define numOfHatSwitches 0
 #define enableX false
 #define enableY false
@@ -21,8 +21,8 @@ BleGamepad bleGamepad("AMG GT3 Wheel", "lemmingDev", 25);
 
 byte previousButtonStates[numOfButtons];
 byte currentButtonStates[numOfButtons];
-byte buttonPins[numOfButtons] = {18, 19, 21};
-byte physicalButtons[numOfButtons] = {1, 2, 3};
+byte buttonPins[numOfButtons] = {12, 13, 14, 18, 19, 21, 26, 27};
+byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8};
 //byte buttonPins[numOfButtons] = {0, 35, 17, 18, 19, 23, 25, 26, 27, 32};
 //byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
