@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <BleGamepad.h>
 
-#define numOfButtons 8 
+#define numOfButtons 8
 #define numOfHatSwitches 0
 #define enableX false
 #define enableY false
@@ -17,27 +17,33 @@
 #define enableBrake false
 #define enableSteering false
 
-BleGamepad bleGamepad("AMG GT3 Wheel", "lemmingDev", 25);
+// BATTERY VOLTAGE
+#define ADC 4
+
+BleGamepad bleGamepad("AMG GT3 Wheel", "lemmingDev");
+
+// BATTERY PERCENT
+int batteryPercentage;
 
 byte previousButtonStates[numOfButtons];
 byte currentButtonStates[numOfButtons];
 byte buttonPins[numOfButtons] = {12, 13, 14, 18, 19, 21, 26, 27};
 byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8};
-//byte buttonPins[numOfButtons] = {0, 35, 17, 18, 19, 23, 25, 26, 27, 32};
-//byte physicalButtons[numOfButtons] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+int period = 10000;
+unsigned long time_now = 0;
 
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
   pinMode(2, OUTPUT);
-
+  batteryPercentage = 3350;
   for (byte currentPinIndex = 0; currentPinIndex < numOfButtons; currentPinIndex++)    {
     pinMode(buttonPins[currentPinIndex], INPUT_PULLUP);
     previousButtonStates[currentPinIndex] = HIGH;
     currentButtonStates[currentPinIndex] = HIGH;
   }
-
 
   // Setup controller with 10 buttons, accelerator, brake and steering
   BleGamepadConfiguration bleGamepadConfig;
@@ -55,19 +61,25 @@ void setup() {
 
 void loop() {
   if (bleGamepad.isConnected())  {
-    Serial.println("BLE connected");
+    while (millis() > time_now + period) {
+      Serial.println("BLE connected");
+      Serial.println("Checking Battery Level");
+      batteryLevel();
+      time_now = millis();
+    }
+
     for (byte currentIndex = 0; currentIndex < numOfButtons; currentIndex++) {
       currentButtonStates[currentIndex] = digitalRead(buttonPins[currentIndex]);
-      Serial.print("buttonPins: "); Serial.print(buttonPins[currentIndex]);
-      Serial.print("    physicalButtons: "); Serial.print(physicalButtons[currentIndex]);
-      Serial.print("  Button status: "); Serial.println(currentButtonStates[currentIndex]);
+      //      Serial.print("buttonPins: "); Serial.print(buttonPins[currentIndex]);
+      //      Serial.print("    physicalButtons: "); Serial.print(physicalButtons[currentIndex]);
+      //      Serial.print("  Button status: "); Serial.println(currentButtonStates[currentIndex]);
       if (currentButtonStates[currentIndex] != previousButtonStates[currentIndex]) {
-        Serial.print("currentButtonStates != previousButtonStates"); Serial.print(currentButtonStates[currentIndex]); Serial.println(previousButtonStates[currentIndex]);
+        //        Serial.print("currentButtonStates != previousButtonStates"); Serial.print(currentButtonStates[currentIndex]); Serial.println(previousButtonStates[currentIndex]);
         if (currentButtonStates[currentIndex] == LOW) {
-          Serial.println("currentButtonStates[currentIndex] == LOW");
+          //          Serial.println("currentButtonStates[currentIndex] == LOW");
           bleGamepad.press(physicalButtons[currentIndex]);
         } else {
-          Serial.println("currentButtonStates[currentIndex] == HIGH");
+          //          Serial.println("currentButtonStates[currentIndex] == HIGH");
           bleGamepad.release(physicalButtons[currentIndex]);
         }
       }
@@ -80,7 +92,51 @@ void loop() {
     }
     delay(20);
   } else {
-    Serial.println("BLE is not connected");
-    delay(100);
+    while (millis() > time_now + period) {
+      Serial.println("BLE is not connected");
+      time_now = millis();
+    }
   }
+}
+
+int batteryLevel() {
+  if (batteryPercentage < 100) { // REMOVE
+    batteryPercentage = 3300; // REMOVE
+  } // REMOVE
+
+  int sensorValue = batteryPercentage;
+  float voltage = sensorValue * (5.12 / 4095.0);
+  Serial.print(voltage);
+  Serial.print("V ||");
+  int percentage = (voltage / 4.2) * 100;
+  Serial.print(percentage);
+  Serial.println("%");
+  bleGamepad.setBatteryLevel(percentage);
+  if (percentage < 80  && percentage > 71) {
+    Serial.println("LOW battery 80");
+  }
+  if (percentage < 70  && percentage > 61) {
+    Serial.println("LOW battery 70");
+  }
+  if (percentage < 60  && percentage > 51) {
+    Serial.println("LOW battery 60");
+  }
+  if (percentage < 50  && percentage > 41) {
+    Serial.println("LOW battery 50");
+  }
+  if (percentage < 40  && percentage > 31) {
+    Serial.println("LOW battery 40");
+  }
+  if (percentage < 30  && percentage > 21) {
+    Serial.println("LOW battery 30");
+  }
+  if (percentage < 20  && percentage > 11) {
+    Serial.println("LOW battery 20");
+  }
+  if (percentage < 10) {
+    Serial.println("LOW battery 10");
+  }
+
+  batteryPercentage = batteryPercentage - 100; // REMOVE
+  return percentage;
 }
